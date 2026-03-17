@@ -31,33 +31,34 @@ For the agent to "see" your open tabs, Chrome must be launched in remote debuggi
 🛠️ Installation & Setup
 ------------------------
 
-### 1\. Clone and Install Dependencies
+1. Clone and Install Dependencies
+``` Bash
+# Install the core libraries
+pip install playwright langchain-ollama langchain-google-genai langchain-core langgraph flask twilio
 
-Bash
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   # Install the core libraries  pip install playwright langchain-ollama langchain-google-genai langchain-core langgraph flask twilio  # Install Playwright browser binaries (for the fallback launcher)  playwright install chromium   `
-
-### 2\. Configuration Files
-
+```
+# Install Playwright browser binaries (for the fallback launcher)
+``` Bash
+playwright install chromium
+2. Configuration Files
 Ensure you have the following files in your project root:
+```
+config.py
 
-**config.py**
+``` Python
+TWILIO_ACCOUNT_SID = "your_sid_here"
+TWILIO_AUTH_TOKEN = "your_token_here"
+TWILIO_NUMBER = "whatsapp:+14155238886" # Your Twilio Sandbox number
+factory.py
+Ensure your LLMFactory is correctly configured to return a LangChain LLM (like Google Gemini or Ollama).
+```
+3. Expose your Localhost
+``` Bash Twilio needs to send "Webhooks" to your computer. Use ngrok to create a tunnel: ```
 
-Python
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   TWILIO_ACCOUNT_SID = "your_sid_here"  TWILIO_AUTH_TOKEN = "your_token_here"  TWILIO_NUMBER = "whatsapp:+14155238886" # Your Twilio Sandbox number   `
-
-**factory.py**Ensure your LLMFactory is correctly configured to return a LangChain LLM (like Google Gemini or Ollama).
-
-### 3\. Expose your Localhost
-
-Twilio needs to send "Webhooks" to your computer. Use ngrok to create a tunnel:
-
-Bash
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   ngrok http 5080   `
-
-Copy the **Forwarding URL** (e.g., https://random-id.ngrok-free.app).
+``` Bash
+ngrok http 5080
+```
+Copy the Forwarding URL (e.g., https://random-id.ngrok-free.app).
 
 🏃 Running the Application
 --------------------------
