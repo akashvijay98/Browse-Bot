@@ -211,7 +211,7 @@ class State(TypedDict):
 tools = [sweep_open_tabs_and_filter, read_and_analyze_tabs, read_and_summarize_tabs, browser_search]
 
 
-llm = llm = LLMFactory.build().bind_tools(tools)
+llm = LLMFactory.build().bind_tools(tools)
 
 def assistant(state: State):
     return {"messages": [llm.invoke(state["messages"])]}
