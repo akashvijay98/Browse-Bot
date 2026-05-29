@@ -1,92 +1,91 @@
-WhatsApp Web-Scanner Agent 🔍
-=============================
+Browse Bot
+==========
 
-This application turns your WhatsApp into a remote control for your Chrome browser. It uses an AI agent to scan your open browser tabs, search the web, and summarize content, sending the results directly back to your phone.
+Browse Bot is a Chrome extension plus local Flask service that lets you chat with your browser from a side panel. The backend can read the active tab, inspect open tabs, scroll pages, search the web, and open URLs.
 
-🚀 Prerequisites
-----------------
+What it does
+------------
 
-### 1\. Python Environment
+- Reads the current Chrome tab or all open tabs.
+- Scrolls the active tab to load more content.
+- Searches the web in a new tab and extracts readable text.
+- Opens a URL in Chrome on request.
+- Sends agent responses back through the extension side panel.
 
-Ensure you have Python **3.9+** installed.
+Requirements
+------------
 
-### 2\. Chrome Remote Debugging
+- Python 3.9 or newer.
+- Google Chrome.
+- One supported LLM provider:
+  - Google Gemini, or
+  - Ollama running locally.
 
-For the agent to "see" your open tabs, Chrome must be launched in remote debugging mode.
+Setup
+-----
 
-*   **Close all instances of Chrome** completely.
-    
-*   Bashchrome.exe --remote-debugging-port=9222_(Note: If chrome.exe is not in your PATH, navigate to its installation folder first.)_
-    
+1. Create and activate a virtual environment.
 
-### 3\. Twilio Account
+2. Install the Python dependencies:
 
-*   A **Twilio Account SID** and **Auth Token**.
-    
-*   A active **Twilio WhatsApp Sandbox** or a registered WhatsApp sender number.
-    
-*   A public URL (using **ngrok**) to expose your local server to Twilio.
-    
-
-🛠️ Installation & Setup
-------------------------
-
-1. Clone and Install Dependencies
-``` Bash
-# Install the core libraries
-pip install playwright langchain-ollama langchain-google-genai langchain-core langgraph flask twilio
-
+```bash
+pip install flask flask-sock python-dotenv langchain-core langgraph langchain-google-genai langchain-ollama
 ```
-# Install Playwright browser binaries (for the fallback launcher)
-``` Bash
-playwright install chromium
-2. Configuration Files
-Ensure you have the following files in your project root:
+
+3. Configure your environment in the project root `.env` file. The backend reads the same variables used in `backend/config.py`:
+
+```env
+GOOGLE_API_KEY=your_key_here
 ```
-config.py
 
-``` Python
-TWILIO_ACCOUNT_SID = "your_sid_here"
-TWILIO_AUTH_TOKEN = "your_token_here"
-TWILIO_NUMBER = "whatsapp:+14155238886" # Your Twilio Sandbox number
-factory.py
-Ensure your LLMFactory is correctly configured to return a LangChain LLM (like Google Gemini or Ollama).
+4. Pick the provider in `backend/config.py`:
+
+```python
+ACTIVE_PROVIDER = "gemini"
+# or
+ACTIVE_PROVIDER = "ollama"
 ```
-3. Expose your Localhost
-``` Bash Twilio needs to send "Webhooks" to your computer. Use ngrok to create a tunnel: ```
 
-``` Bash
-ngrok http 5080
+5. If you use Ollama, make sure the model in `MODEL_CONFIGS["ollama"]` is available locally and Ollama is running on `http://localhost:11434`.
+
+Load the extension
+------------------
+
+1. Open Chrome and go to `chrome://extensions`.
+2. Turn on Developer mode.
+3. Click Load unpacked.
+4. Select the `frontend/` directory.
+
+The extension defines the side panel and content script in `frontend/manifest.json`.
+
+Run the backend
+---------------
+
+Start the Flask server from the project root:
+
+```bash
+python backend/agent.py
 ```
-Copy the Forwarding URL (e.g., https://random-id.ngrok-free.app).
 
-🏃 Running the Application
---------------------------
+The server listens on `127.0.0.1:5080` and exposes:
 
-1.  **Start Chrome** with port 9222 (as shown in Prerequisites).
-    
-2.  Bashpython agent.py
-    
-3.  **Configure Twilio Webhook:**
-    
-    *   Go to the [Twilio Console](https://console.twilio.com/).
-        
-    *   Navigate to **Messaging > Try it Out > WhatsApp Sandbox**.
-        
-    *   Paste your ngrok URL followed by /whatsapp into the "When a message comes in" field:https://your-id.ngrok-free.app/whatsapp
-        
-4.  **Chat!**
-    
-    *   Send a message like _"Summarize my open job tabs"_ or _"Search for the best price for a Sony camera"_ to your WhatsApp Sandbox number.
-        
+- `ws://localhost:5080/ws` for the extension side panel
+- `http://127.0.0.1:5080/health` for a basic health check
 
-📋 Features
------------
+Use it
+------
 
-*   **Dynamic Scraping:** Uses Playwright to scroll through pages and load lazy-loaded content.
-    
-*   **Persistence:** Logs all extracted web data to .txt files for auditing.
-    
-*   **Async Processing:** Uses Python threading to ensure Twilio gets an immediate "Received" response while the agent works in the background.
-    
-*   **Tool-Augmented:** The agent chooses between searching the web, analyzing specific tabs, or summarizing broad content based on your prompt.
+- Open the extension side panel from Chrome.
+- Ask the agent to summarize the current page, compare open tabs, search the web, or open a URL.
+- The backend will respond in the side panel after it finishes the browser action.
+
+Project layout
+--------------
+
+- `backend/agent.py` - Flask app, WebSocket bridge, and LangGraph agent.
+- `backend/config.py` - Provider configuration.
+- `backend/factory.py` - LLM construction based on the active provider.
+- `frontend/manifest.json` - Chrome extension manifest.
+- `frontend/sidepanel.html` - Side panel UI.
+- `frontend/sidepanel.js` - WebSocket client and browser action dispatcher.
+- `frontend/content.js` - Content script that extracts text and handles scrolling.
