@@ -160,20 +160,79 @@ def open_url(url: str) -> str:
     return json.dumps(result)
 
 
+@tool
+def deep_scroll_current_tab(scrolls: int = 10, delay_seconds: float = 1.5) -> str:
+    """
+    Scrolls down the current active tab multiple times with a slight delay to trigger 
+    infinite loading / lazy-loaded content (like LinkedIn post feeds, Twitter timelines, or job boards).
+    Use this when the user explicitly requests to load a deep feed or many historical posts before reading.
+    """
+    session = current_browser_session()
+    
+    # Cap scrolls at a reasonable safety limit (e.g., 15) to avoid hanging the socket
+    safe_scrolls = min(max(1, scrolls), 15)
+    
+    session.send_json({
+        "type": "status", 
+        "content": f"Deep scrolling {safe_scrolls} times to load infinite feed content..."
+    })
+
+    for i in range(safe_scrolls):
+        try:
+            # Reusing your existing scroll_current_tab extension action
+            session.request_action({
+                "action": "scroll_current_tab",
+                "direction": "down",
+            }, timeout=15)
+            
+            # Give the browser DOM time to fetch and render new elements
+            time.sleep(delay_seconds)
+            
+        except Exception as e:
+            return f"Deep scroll interrupted at iteration {i+1}/{safe_scrolls} due to error: {e}"
+
+    return f"Successfully scrolled down {safe_scrolls} times. Infinite content should now be loaded into the DOM."
+
+
 class State(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
 
-TOOLS = [read_current_tab, read_open_tabs, scroll_current_tab, browser_search, open_url]
+TOOLS = [read_current_tab, read_open_tabs, scroll_current_tab, deep_scroll_current_tab, browser_search, open_url]
 TOOLS_BY_NAME = {tool_.name: tool_ for tool_ in TOOLS}
 
 llm = LLMFactory.build().bind_tools(TOOLS)
 
-SYSTEM_PROMPT = """You are a browser assistant connected to a Chrome extension side panel.
+BASE_SYSTEM_PROMPT = """You are a browser assistant connected to a Chrome extension side panel.
+You can help the user with a wide variety of tasks including web research, general QA, content summarization, navigation, and job searching.
 Use the provided browser tools whenever the user asks about the active page, open tabs, web search, scrolling, or navigation.
 The backend cannot access Chrome directly; it must request browser actions through the side panel extension.
 After tool results are available, answer the user's request directly and concisely.
+
 """
+
+JOB_FILTER_INSTRUCTIONS = """
+### CRITICAL JOB FILTERING CRITERIA:
+When searching for, evaluating, or filtering job postings for the user, you MUST strictly adhere to these filters:
+- **Target Roles:** Software Engineering jobs (especially backend, distributed systems, infrastructure, AI/RAG tooling).
+- **Target Location:** Based in the United States / Remote US.
+- **Strict Exclusions:** NO hardware engineering, pure C++, pure Frontend (UI/UX), or senior/staff/principal level roles.
+
+### FEED HANDLING COMPLIANCE:
+- If the user asks you to look through a feed (like LinkedIn posts) and scroll down multiple times (e.g., 10 times), you MUST invoke the `deep_scroll_current_tab` tool with `scrolls=10` before executing a `read_current_tab` action. This ensures all lazy-loaded posts are visible in the context text.
+
+### MANDATORY OUTPUT FORMAT:
+For every single matching job posting or post you find that clears the filters, you MUST format it exactly as shown below. Do not use Markdown tables or alternative keys. Output a list of these blocks:
+
+title: "[Exact Job Title or Context]"
+contact: "[Author Name, Email, or Profile Link of the Poster]"
+Link: "[Direct URL to the post or application page]"
+
+If any field (like contact) is not explicitly extractable from the text, use contact: "Not listed". Include nothing else but these structured blocks in your final reply.
+
+"""
+
+
 
 
 def assistant(state: State) -> dict[str, list[BaseMessage]]:
@@ -231,10 +290,11 @@ def run_agent_prompt(session: BrowserSession, user_text: str) -> None:
     _tool_context.session = session
     try:
         session.send_json({"type": "status", "content": "Thinking..."})
+        full_system_prompt = f"{BASE_SYSTEM_PROMPT}\n{JOB_FILTER_INSTRUCTIONS}"
 
         inputs = {
             "messages": [
-                SystemMessage(content=SYSTEM_PROMPT),
+                SystemMessage(content=full_system_prompt),
                 HumanMessage(content=user_text),
             ]
         }
